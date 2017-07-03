@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Loja de Fotos</title>
+  <meta name="description" content="Loja de Fotos Website">
+  <meta name="keywords" content="html, css, web">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <script src="shutterstock-oauth.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <div id="site" class="row">
+    <!--Parte da tela que exibirá as imagens pesquisada-->
+    <div class="row" style="text-align: center">
+      <h1>Bem vindo a Loja de Fotos</h1>
+    </div>
+    <!--Pesquisa-->
+    <div class="row" style="text-align: center">
+      <div class="navbar-form navbar-center" role="search">
+        <div class="form-group">
+          <input id="item" type="text" class="form-control" placeholder="Buscar fotos">
+        </div>
+        <button id="btn-pesquisar" type="submit" class="btn btn-default" onclick="pesquisa()">Pesquisar</button>
+      </div>
+    </div>
+
+    <!--Subtítulo-->
+    <div class="row">
+      <div class="col-xs-12 col-md-12 col-lg-12">
+        <p class="lead">Galeria de Imagens</p>
+        <hr />
+      </div>
+    </div>
+
+    <!--Painel de fotos -->
+    <div class="row">
+      <div class="row" id="image-panel">
+      </div>
+    </div>
+
+    <!--Painel de albuns -->
+    <div class="row">
+      <div class="col-md-2" id="pesquisa-album">
+        <p class="lead">Meus albuns</p>
+        <hr />
+        <div class="row">
+          <div class="col-xs-4 col-md-9 col-lg-9">
+            <input type="text" class="form-control" id="album-name" placeholder="Novo album">
+          </div>
+          <div class="col-md-1">
+            <button type="submit" class="btn btn-primary" onclick="insereNovoAlbum()">+</button>
+          </div>
+          <div id="lista-album" class="list-group">
+          </div>
+        </div>
+      </div>
+      <div class="col-xs-12 col-sm-8 col-md-6 col-lg-6" style="border: 1px">
+        <p class="lead" id="nome-album">Fotos do album:</p>
+        <hr />
+        <div id="conteudo-album">
+        </div>
+      </div>
+      <div class="col-xs-4 col-sm-4 col-md-4 col-lg-4">
+        <p class="lead">Slideshow:</p>
+        <hr />
+        <div id="imagem-slide" class="slide">
+          <img class="thumbnail image-box slide" src="images/default.jpg">
+        </div>
+        <div class="row">
+          <div class="col-xs-6 col-sm-6 col-md-3 col-lg-3" style="text-align: center">
+            <button class="w3-button w3-light-grey" onclick="prev()">❮ Anterior</button>
+          </div>
+          <div class="col-xs-6 col-sm-6 col-md-3 col-lg-3"style="text-align: center">
+            <button class="w3-button w3-light-grey" onclick="next()">Próxima❯</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
+  </div>
+  <script>
+       
+	//Configure os parâmetros a seguir
+	var URL = "URL_APP/completed.html"
+    var id = "CLIENT_ID" //Credenciais da aplicação
+    var secret = "SECRET"
+
+	//Shutterstock API
+	var API_URL = "https://api.shutterstock.com/v2"
+	
+    //Token de acesso do usuário
+    var token = '';
+    var busca = '';
+
+    var auth = new ShutterstockOAuth({
+      client_id: id,
+      scope: "user.email user.address",
+      redirect_endpoint: URL,
+      complete: function (data) { callbackAuthorization(data) }
+    })
+
+    //Obtem token de acesso
+    var callbackAuthorization = function (data) {
+      console.log("callbackAuthorization()");
+      var code = '';
+      if (data) {
+        for (var key in data) {
+          console.log(key + ": " + data[key]);
+          code = data[key];
+        }
+      }
+
+      fetch(API_URL + '/oauth/access_token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'client_id=' + id + '&client_secret=' + secret + '&grant_type=authorization_code&realm=customer&code=' + code
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          for (var key in data) {
+            token = data['access_token'];
+            console.log("access_token: " + token);
+          }
+        });
+    }
+
+    function autoriza() {
+      return auth.authorize();
+    }
+
+    // Search item  
+    function pesquisa() {
+      item = $('#item').val();
+      console.log('search: ' + item)
+      if (!item) {
+        alert("Digite o texto para pesquisa de fotos");
+        return;
+      }
+
+      if (!token) {
+        console.log('usuário não autorizado - token: ' + token)
+        return;
+      }
+
+      var opts = 'query=' + item + '&safe=true&image_type=photo&orientation=horizontal&page=1&per_page=24'
+      console.log('.ajax: ')
+      var jqxhr = $.ajax({
+        url: API_URL + '/images/search',
+        data: opts,
+        headers: {
+          Authorization: 'Bearer ' + token
+        }
+      })
+        .then(function (data) {
+          console.log('Results: ' + data.total_count)
+          var $container = $('#image-panel');
+          $container.html("");
+          $('#image-panel').empty();
+
+          if (data.total_count === 0) {
+            $container.append('<p>No Results</p>');
+            return;
+          }
+
+          $.each(data.data, function (i, item) {
+            console.log('.each: ')
+            var component = criaComponenteImagem(item);
+            $container.append(component);
+          });
+
+          // Reduce the options area to show the results
+          if (window.innerWidth < 600) $('.collapse.in').collapse();
+
+          if (data.total_count === 0) {
+            $container.append('<p>No Results</p>');
+            return;
+          }
+          console.log('Results: ' + data.total_count)
+        })
+        .fail(function (xhr, status, err) {
+          alert('Failed to retrieve images search results:\n' + JSON.stringify(xhr.responseJSON, null, 2));
+        });
+
+      return jqxhr;
+    }
+
+    // Create image wrapper component
+    function criaComponenteImagem(image) {
+      if (!image || !image.assets || !image.assets.large_thumb || !image.assets.large_thumb.url) return;
+      var wrapper = $('<div>');
+      var thumbWrapper = $('<div>');
+      var thumbnail = $('<img>');
+      var description = $('<p>');
+
+      $(thumbnail)
+        //.click(fetchDetails)
+        .attr('id', image.id)
+        .attr('src', image.assets.large_thumb.url)
+        .attr('onclick', 'fotoGaleriaClick(\"' + image.assets.large_thumb.url + '\")')
+        .attr('title', image.description);
+      $(thumbWrapper)
+        .addClass('thumbnail image-box')
+        .css('height', 150)
+        .css('width', 150)
+        .append(thumbnail);
+      $(wrapper)
+        .addClass('col-xs-6 col-sm-4 col-md-3 col-lg-2')
+        .append(thumbWrapper);
+      return wrapper;
+    }
+    // lista de albuns
+    // {nome:"nome", fotos:["url1", "url2", "url3"]}
+    var listaAlbuns = []
+
+    //Cria lista de albuns
+    function criaListaAlbuns() {
+      $('#lista-album').empty();
+      $.each(listaAlbuns, function (i, item) {
+        console.log('listItem: ' + item.nome)
+        var wrapper = $('<button>');
+        $(wrapper)
+          .addClass('list-group-item list-group-item-action')
+          .attr('type', 'button')
+          .attr('id', i)
+          .attr('onclick', 'selecionaAlbum(' + i + ')')
+          .append(item.nome);
+
+        $('#lista-album').append($(wrapper))
+      });
+    }
+
+    //Adiciona novo album
+    function insereNovoAlbum() {
+      if (!$("#album-name").val()) {
+        alert("Digite o nome do novo album");
+        return;
+      }
+
+      listaAlbuns[listaAlbuns.length] =
+        {
+          nome: $("#album-name").val(),
+          fotos: []
+        }
+      criaListaAlbuns();
+      $("#album-name").val('');
+      selecionaAlbum(listaAlbuns.length-1);
+    }
+
+    // Create image wrapper component
+    function criaComponenteAlbum(id) {
+
+      $('#conteudo-album').empty();
+
+      if (!listaAlbuns[id].fotos.length) {
+        $('#conteudo-album').append('<p>Nenhuma foto no album selecionado. Para selecionar click na foto na galeria e imagens.</p>');
+      }
+
+      for (i = 0; i < listaAlbuns[id].fotos.length; i++) {
+        var wrapper = $('<div>');
+        var thumbWrapper = $('<div>');
+        var thumbnail = $('<img>');
+        $(thumbnail)
+          .attr('src', listaAlbuns[id].fotos[i])
+        $(thumbWrapper)
+          .addClass('thumbnail')
+          .css('height', 50)
+          .css('width', 50)
+          .append(thumbnail);
+        $(wrapper)
+          .addClass('col-xs-4 col-sm-3 col-md-2 col-lg-1')
+          .attr('onclick', 'fotoAlbumClick(' + id + ', ' + i + ')')
+          .append(thumbWrapper);
+
+        $('#conteudo-album').append($(wrapper))
+      }
+    }
+
+    function criaComponenteSlideshow(i) {
+
+      if (!listaAlbuns[albumSelecionado].fotos.length)
+        return
+      $('#imagem-slide').empty()
+
+
+      var thumbnail = $('<img>');
+      $(thumbnail)
+        .addClass('thumbnail slide')
+        .attr('src', listaAlbuns[albumSelecionado].fotos[i]);
+
+      $('#imagem-slide').attr('index', i).append($(thumbnail))
+    }
+
+    function prev() {
+      var index = parseInt($('#imagem-slide').attr('index'))
+      if (index == 0)
+        return
+      criaComponenteSlideshow(index - 1)
+    }
+
+    function next() {
+      var index = parseInt($('#imagem-slide').attr('index'))
+      if (index == listaAlbuns[albumSelecionado].fotos.length - 1)
+        return
+      criaComponenteSlideshow(index + 1)
+
+    }
+
+    function refresh(id) {
+      criaComponenteAlbum(id)
+      criaComponenteSlideshow(0)
+    }
+
+    var albumSelecionado = null;
+    function selecionaAlbum(i) {
+      console.log('album selecionado:' + i)
+      $('#nome-album').text('Fotos do album: ' + listaAlbuns[i].nome)
+      albumSelecionado = i;
+      refresh(i)
+    }
+
+    function fotoGaleriaClick(url) {
+      console.log('foto selecionada:' + url)
+      if (albumSelecionado == null)
+        return
+
+      listaAlbuns[albumSelecionado].fotos.push(url);
+      refresh(albumSelecionado)
+    }
+
+    //Album e foto id
+    function fotoAlbumClick(id, i) {
+      console.log('Album:' + listaAlbuns[id].nome + " Foto:" + i)
+      listaAlbuns[id].fotos.splice(i, 1)
+      refresh(id)
+    }
+
+    $(document).ready(function () {
+      criaListaAlbuns();
+      autoriza();
+    });
+  </script>
+
+</body>
+
+</html>
