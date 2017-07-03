@@ -1,0 +1,14 @@
+{
+  "name": "app_henrique_nascimento",
+  "version": "1.0.0",
+  "description": "App Album de Fotos",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bootstrap": "^3.3.7"
+  }
+}
